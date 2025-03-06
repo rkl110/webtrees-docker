@@ -31,7 +31,8 @@ services:
       - app_certs:/certs/
       - app_data:/var/www/webtrees/data/
       - app_themes:/var/www/webtrees/modules_v4/
-    entrypoint: ["/bin/bash", "-c", "bin/generate_cert.sh && exec docker-entrypoint.sh"]
+      - ./bin/generate_cert.sh:/generate_cert.sh
+    entrypoint: ["/bin/bash", "-c", "/generate_cert.sh && exec python3 /docker-entrypoint.py"]
 
   db:
     environment:
