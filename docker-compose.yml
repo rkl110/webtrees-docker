@@ -3,7 +3,9 @@ services:
     depends_on:
       - db
     environment:
-      PRETTY_URLS: "true"
+      PRETTY_URLS: "1"
+      HTTPS: "1"
+      HTTPS_REDIRECT: "1"
       LANG: "en-US"
       BASE_URL: "https://tree.klaus-fam.de"
       DB_TYPE: "mysql"
@@ -19,15 +21,17 @@ services:
       WT_EMAIL: "${E_WT_EMAIL}"
       PUID: "1000"
       PGID: "1000"
-    image: ghcr.io/nathanvaughn/webtrees:latest
+#    image: ghcr.io/nathanvaughn/webtrees:latest
+    image: ghcr.io/nathanvaughn/webtrees:2.1.22
     ports:
       - 80:80
-#      - 443:443
+      - 443:443
     restart: unless-stopped
     volumes:
-#      - app_certs:/certs/
+      - app_certs:/certs/
       - app_data:/var/www/webtrees/data/
       - app_themes:/var/www/webtrees/modules_v4/
+    entrypoint: ["/bin/bash", "-c", "bin/generate_cert.sh && exec docker-entrypoint.sh"]
 
   db:
     environment:
@@ -56,7 +60,7 @@ volumes:
     driver: local
   app_data:
     driver: local
-#  app_certs:
-#    driver: local
+  app_certs:
+    driver: local
   app_themes:
     driver: local
