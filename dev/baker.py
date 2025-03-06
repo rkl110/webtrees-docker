@@ -16,6 +16,8 @@ BASE_IMAGES = [
 ]
 
 # https://webtrees.net/install/
+# PHP 8.4 is still broken with imagick.
+# See https://github.com/Imagick/imagick/issues/698
 WEBTREES_PHP = {"1.": "7.4", "2.0": "7.4", "2.1": "8.1", "2.2": "8.3"}
 WEBTREES_PATCH = {"2.1.18": "1", "2.1.19": "2", "default": "2"}
 
@@ -72,6 +74,8 @@ def get_tags(versions: List[str]) -> Dict[str, List[str]]:
             tag = "latest-1"
         elif version.startswith("2.0"):
             tag = "latest-2.0"
+        elif version.startswith("2.1"):
+            tag = "latest-2.1"
         else:
             tag = "latest"
 
