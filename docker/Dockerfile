@@ -67,6 +67,10 @@ COPY apache/ /etc/apache2/sites-available/
 RUN chmod 0644 ./.htaccess \
  && chmod 0644 /etc/apache2/sites-available/*
 
+# generate-ssl
+COPY generate_cert.sh /
+RUN chmod +x /generate_cert.sh
+
 # entrypoint
 COPY docker-entrypoint.py /
 
