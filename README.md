@@ -231,3 +231,12 @@ This image is available from 3 different registries. Choose whichever you want:
 - [docker.io/nathanvaughn/webtrees](https://hub.docker.com/r/nathanvaughn/webtrees)
 - [ghcr.io/nathanvaughn/webtrees](https://github.com/users/nathanvaughn/packages/container/package/webtrees)
 - [cr.nathanv.app/library/webtrees](https://cr.nathanv.app/harbor/projects/1/repositories/webtrees) (experimental)
+
+
+## My Notes
+
+Latest local Build with:
+
+```bash
+DOCKER_BUILDKIT=1 docker build --build-arg WEBTREES_VERSION=2.2.1 --build-arg PHP_VERSION=8.3 --build-arg PATCH_VERSION=2 -t webtrees:test docker
+```

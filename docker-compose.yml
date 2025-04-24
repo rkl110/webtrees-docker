@@ -7,7 +7,7 @@ services:
       HTTPS: "1"
       HTTPS_REDIRECT: "1"
       LANG: "en-US"
-      BASE_URL: "https://tree.klaus-fam.de"
+      BASE_URL: "${E_BASE_URL}"
       DB_TYPE: "mysql"
       DB_HOST: "db"
       DB_PORT: "3306"
@@ -21,10 +21,8 @@ services:
       WT_EMAIL: "${E_WT_EMAIL}"
       PUID: "1000"
       PGID: "1000"
-#    image: ghcr.io/nathanvaughn/webtrees:latest
-    image: ghcr.io/nathanvaughn/webtrees:2.1.22
+    image: ghcr.io/nathanvaughn/webtrees:latest
     ports:
-#      - 80:80
       - 443:443
     restart: unless-stopped
     volumes:
