@@ -56,7 +56,7 @@ RUN patch app/Services/UpgradeService.php /UpgradeService.patch \
  && rm vendor/egulias/email-validator/src/Validation/MessageIDValidation.php
 
 # use php-production settings
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 # enable apache modules
 RUN a2enmod rewrite && a2enmod ssl && rm -rf /var/www/html
