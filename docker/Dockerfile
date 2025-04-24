@@ -64,6 +64,8 @@ RUN a2enmod rewrite && a2enmod ssl && rm -rf /var/www/html
 # copy apache/php configs
 COPY .htaccess ./
 COPY apache/ /etc/apache2/sites-available/
+RUN chmod 0644 ./.htaccess \
+ && chmod 0644 /etc/apache2/sites-available/*
 
 # entrypoint
 COPY docker-entrypoint.py /
