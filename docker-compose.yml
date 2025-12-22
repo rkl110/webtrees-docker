@@ -39,7 +39,7 @@ services:
       MARIADB_ROOT_PASSWORD: "${E_MARIADB_ROOT_PASSWORD}"
       MARIADB_PASSWORD: "${E_MARIADB_PASSWORD}"
     # See: https://github.com/NathanVaughn/webtrees-docker/issues/145
-    image: docker.io/library/mariadb:latest
+    image: docker.io/library/mariadb:12
     restart: unless-stopped
     volumes:
       - db_data:/var/lib/mysql

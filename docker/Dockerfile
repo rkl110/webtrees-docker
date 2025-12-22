@@ -1,6 +1,10 @@
-ARG PHP_VERSION=8.1
+ARG PHP_VERSION=8.4
 
 FROM docker.io/library/php:$PHP_VERSION-apache
+
+# https://hub.docker.com/_/php
+# https://github.com/NathanVaughn/webtrees-docker/issues/160
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 ENV WEBTREES_HOME="/var/www/webtrees"
 WORKDIR $WEBTREES_HOME
@@ -31,7 +35,7 @@ ADD --chmod=0755 \
 RUN install-php-extensions imagick/imagick@28f27044e435a2b203e32675e942eb8de620ee58 \
  && docker-php-ext-enable imagick \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
- && docker-php-ext-install -j"$(nproc)" pdo pdo_mysql pdo_pgsql zip intl gd exif
+ && docker-php-ext-install -j"$(nproc)" pdo pdo_mysql pdo_pgsql zip intl gd exif opcache
 
 # remove old apt stuff
 RUN apt-get purge gcc g++ make -y \
@@ -46,8 +50,8 @@ RUN curl -s -L https://github.com/fisharebest/webtrees/releases/download/${WEBTR
 
 # Disable version update prompt. Webtrees should not be upgrading itself,
 # users should be using tagged container versions
-ARG PATCH_VERSION
-COPY patches/UpgradeService${PATCH_VERSION}.patch /UpgradeService.patch
+ARG UPGRADE_PATCH_VERSION
+COPY patches/UpgradeService${UPGRADE_PATCH_VERSION}.patch /UpgradeService.patch
 RUN patch app/Services/UpgradeService.php /UpgradeService.patch \
  && rm /UpgradeService.patch \
 # Delete file that caused email issues
