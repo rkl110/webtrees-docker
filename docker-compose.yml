@@ -21,8 +21,8 @@ services:
       WT_EMAIL: "${E_WT_EMAIL}"
       PUID: "1000"
       PGID: "1000"
-        #image: ghcr.io/nathanvaughn/webtrees:latest
-    image: webtrees:test2
+    image: ghcr.io/nathanvaughn/webtrees:latest
+      #image: webtrees:test2
     ports:
       - 443:443
     restart: unless-stopped
@@ -30,6 +30,7 @@ services:
       - app_certs:/certs/
       - app_data:/var/www/webtrees/data/
       - app_themes:/var/www/webtrees/modules_v4/
+      - ./bin/generate_cert.sh:/generate_cert.sh
     entrypoint: ["/bin/bash", "-c", "/generate_cert.sh && exec python3 /docker-entrypoint.py"]
 
   db:
