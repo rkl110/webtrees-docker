@@ -59,12 +59,21 @@ RUN patch app/Services/UpgradeService.php /UpgradeService.patch \
 # https://github.com/NathanVaughn/webtrees-docker/issues/88
  && rm vendor/egulias/email-validator/src/Validation/MessageIDValidation.php
 
+# use php-production settings
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
 # enable apache modules
 RUN a2enmod rewrite && a2enmod ssl && rm -rf /var/www/html
 
 # copy apache/php configs
 COPY .htaccess ./
 COPY apache/ /etc/apache2/sites-available/
+RUN chmod 0644 ./.htaccess \
+ && chmod 0644 /etc/apache2/sites-available/*
+
+# generate-ssl
+COPY generate_cert.sh /
+RUN chmod +x /generate_cert.sh
 
 # entrypoint
 COPY docker-entrypoint.py /
