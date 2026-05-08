@@ -97,7 +97,7 @@ def main(save_to_file: bool, testing: bool, version: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", action="store_true", help="Include ARM architecture")
-    parser.add_argument("--file", action="store_true", help="Output to JSON")
+    parser.add_argument("--file", action="store_true", help="Output to a file")
     parser.add_argument("--test", action="store_true", help="Only save the tag 'test'")
     parser.add_argument("--version", type=str, help="Specific version to build")
     args = parser.parse_args()

@@ -22,6 +22,10 @@ Rename and copy into the repo. Update the dict in `versionchecker.py`.
 
 <https://webtrees.net/download>
 
+## Release Dates
+
+<https://api.github.com/repos/fisharebest/webtrees/releases?per_page=20>
+
 ## Building Image
 
 Example:
