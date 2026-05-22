@@ -558,11 +558,18 @@ def htaccess() -> None:
     src_htaccess_file = os.path.join("/bak", "webtrees", "data", ".htaccess")
     htaccess_file = os.path.join(DATA_DIR, ".htaccess")
 
+    if not os.path.isfile(src_htaccess_file):
+        # skip if the backup file does not exist
+        print2(
+            f"WARNING: {src_htaccess_file} does not exist. Skipping {htaccess_file} integrity check"
+        )
+
     # https://github.com/NathanVaughn/webtrees-docker/issues/188
     # In the event the htaccess file in the data directory is different
     # from what it's supposed to be, replace it.
 
     if os.path.isfile(htaccess_file) and filecmp.cmp(src_htaccess_file, htaccess_file):
+        print2(f"{htaccess_file} integrity check succeeded")
         return
 
     print2(f"WARNING: {htaccess_file} does not exist or does not match master copy")
