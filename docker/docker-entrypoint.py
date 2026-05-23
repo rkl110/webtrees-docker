@@ -1,4 +1,6 @@
+import filecmp
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -358,7 +360,9 @@ def php_ini() -> None:
 
     # https://webtrees.net/admin/performance/
     set_php_ini_value("opcache.enable", "1")
-    set_php_ini_value("opcache.revalidate_freq", "60") # re check changed files every 60 seconds
+    set_php_ini_value(
+        "opcache.revalidate_freq", "60"
+    )  # re check changed files every 60 seconds
     set_php_ini_value("opcache.revalidate_path", "0")
 
 
@@ -454,8 +458,8 @@ def setup_wizard() -> None:
             cmd = ["pg_isready", "-h", ENV.dbhost, "-p", ENV.dbport, "--quiet"]
             name = "PostgreSQL"
 
-        while subprocess.run(cmd).returncode != 0:
-            print2(f"Waiting for {name} server {ENV.dbhost}:{ENV.dbport} to be ready")
+        while subprocess.run(cmd).returncode != 0:  # type: ignore
+            print2(f"Waiting for {name} server {ENV.dbhost}:{ENV.dbport} to be ready")  # type: ignore
             time.sleep(1)
 
     else:
@@ -551,17 +555,27 @@ def htaccess() -> None:
     """
     Recreate .htaccess file if it ever deletes itself in the /data/ directory
     """
+    src_htaccess_file = os.path.join("/bak", "webtrees", "data", ".htaccess")
     htaccess_file = os.path.join(DATA_DIR, ".htaccess")
 
-    if os.path.isfile(htaccess_file):
+    if not os.path.isfile(src_htaccess_file):
+        # skip if the backup file does not exist
+        print2(
+            f"WARNING: {src_htaccess_file} does not exist. Skipping {htaccess_file} integrity check"
+        )
         return
 
-    print2(f"WARNING: {htaccess_file} does not exist")
+    # https://github.com/NathanVaughn/webtrees-docker/issues/188
+    # In the event the htaccess file in the data directory is different
+    # from what it's supposed to be, replace it.
 
-    with open(htaccess_file, "w") as fp:
-        fp.writelines(["order allow,deny", "deny from all"])
+    if os.path.isfile(htaccess_file) and filecmp.cmp(src_htaccess_file, htaccess_file):
+        print2(f"{htaccess_file} integrity check succeeded")
+        return
 
-    print2(f"Created {htaccess_file}")
+    print2(f"WARNING: {htaccess_file} does not exist or does not match master copy")
+    shutil.copyfile(src_htaccess_file, htaccess_file)
+    print2(f"Updated {htaccess_file}")
 
 
 def main() -> None:

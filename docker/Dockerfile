@@ -58,6 +58,8 @@ RUN patch app/Services/UpgradeService.php /UpgradeService.patch \
 RUN a2enmod rewrite && a2enmod ssl && rm -rf /var/www/html
 
 # copy apache/php configs
+RUN mkdir -p /bak/webtrees/data/ \
+ && cp $WEBTREES_HOME/data/.htaccess /bak/webtrees/data/.htaccess
 COPY .htaccess ./
 COPY apache/ /etc/apache2/sites-available/
 
