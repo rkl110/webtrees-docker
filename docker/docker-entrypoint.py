@@ -563,6 +563,7 @@ def htaccess() -> None:
         print2(
             f"WARNING: {src_htaccess_file} does not exist. Skipping {htaccess_file} integrity check"
         )
+        return
 
     # https://github.com/NathanVaughn/webtrees-docker/issues/188
     # In the event the htaccess file in the data directory is different
