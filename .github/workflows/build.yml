@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Create Bake File
         run: python dev/baker.py --arm --file --version ${{ inputs.version }}
@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download Bake File
         uses: actions/download-artifact@v8
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -166,7 +166,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Update DockerHub README
         uses: christian-korneck/update-container-description-action@v1
