@@ -41,8 +41,8 @@ podman compose up -d --build
 webtrees is then available at <http://localhost:8080> (and, if HTTPS is
 enabled, at <https://localhost:8443>). Both ports are unprivileged so no
 root permissions are required. All application data (media, GEDCOM files,
-config) and the database live in the named volumes `webtrees_app_data`
-and `webtrees_db_data`.
+config), custom modules/themes and the database live in the named volumes
+`webtrees_app_data`, `webtrees_app_modules` and `webtrees_db_data`.
 
 Requirements: Podman 4.7+ with `podman compose` (or `podman-compose`).
 
@@ -242,35 +242,38 @@ All other values are just like a MySQL database.
 
 ### Volumes
 
-The image mounts:
+The provided [docker-compose.yml](docker-compose.yml) mounts:
 
-- `/var/www/webtrees/data/`
+- `/var/www/webtrees/data/` (volume `webtrees_app_data`) — application
+  data; media is stored in the `media` subfolder
+- `/var/www/webtrees/modules_v4/` (volume `webtrees_app_modules`) —
+  custom [themes and modules](https://webtrees.net/download/modules)
 
-(media is stored in the `media` subfolder)
+Both volumes are included in `./scripts/backup.sh` / `restore.sh`.
 
-If you want to add custom [themes or modules](https://webtrees.net/download/modules),
-you can also mount the `/var/www/webtrees/modules_v4/` directory.
+### Custom modules and themes
 
-Example `docker-compose`:
-
-```yml
-volumes:
-  - app_data:/var/www/webtrees/data/
-  - app_themes:/var/www/webtrees/modules_v4/
----
-volumes:
-  app_data:
-    driver: local
-  app_themes:
-    driver: local
-```
-
-See the link above for information about v1.7 webtrees.
-
-To install a custom theme or module, the process is generally as follows:
+Custom modules/themes live in `/var/www/webtrees/modules_v4/`
+(one subdirectory per module) and survive rebuilds and upgrades via the
+`webtrees_app_modules` volume. The easiest way to install one is the
+provided script, which accepts a download URL or a local archive
+(`.zip`, `.tar.gz` or `.tar.bz2`):
 
 ```bash
-docker exec -it webtrees_app_1 bash   # connect to the running container
+./scripts/install-module.sh https://example.com/some-module.zip
+# or: make module SRC=https://example.com/some-module.zip
+
+./scripts/install-module.sh --list            # list installed modules
+./scripts/install-module.sh --remove <name>   # remove a module
+```
+
+Afterwards, enable the module in webtrees under
+_Control panel → Modules_.
+
+Alternatively, install manually inside the running container:
+
+```bash
+podman exec -it webtrees-app bash     # connect to the running container
 cd /var/www/webtrees/modules_v4/      # move into the modules directory
 curl -L <download url> -o <filename>  # download the file
 
@@ -279,10 +282,10 @@ tar -xf <filename.tar.gz>             # extract the tar archive https://xkcd.com
 rm <filename.tar.gz>                  # remove the tar archive
 
 # if module is a .zip file
-apt update && apt install unzip       # install the unzip package
 unzip <filename.zip>                  # extract the zip file
 rm <filename.zip>                     # remove the zip file
 
+chown -R www-data:www-data .          # make sure webtrees can read it
 exit                                  # disconnect from the container
 ```
 

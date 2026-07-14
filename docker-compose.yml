@@ -64,8 +64,9 @@ services:
       # TLS certificates, used when HTTPS=1
       # (generate self-signed ones with: make certs)
       - ./certs:/certs/:ro,Z
-      # Custom themes/modules (optional):
-      # - app_modules:/var/www/webtrees/modules_v4/
+      # Custom themes/modules, see https://webtrees.net/download/modules
+      # (install with: ./scripts/install-module.sh <url-or-file>)
+      - app_modules:/var/www/webtrees/modules_v4/
 
   db:
     image: ${MARIADB_IMAGE:-docker.io/library/mariadb}:${MARIADB_VERSION:-12}
@@ -96,5 +97,5 @@ volumes:
     name: webtrees_app_data
   db_data:
     name: webtrees_db_data
-  # app_modules:
-  #   name: webtrees_app_modules
+  app_modules:
+    name: webtrees_app_modules

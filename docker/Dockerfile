@@ -44,7 +44,9 @@ RUN apt-get purge gcc g++ make -y \
 ARG WEBTREES_VERSION
 RUN curl -s -L https://github.com/fisharebest/webtrees/releases/download/${WEBTREES_VERSION}/webtrees-${WEBTREES_VERSION}.zip -o webtrees.zip \
  && unzip -q webtrees.zip -d /var/www/ && rm webtrees.zip \
- && rm $WEBTREES_HOME/*.md
+ && rm $WEBTREES_HOME/*.md \
+# directory for custom modules/themes, see https://webtrees.net/download/modules
+ && mkdir -p $WEBTREES_HOME/modules_v4
 
 # Disable version update prompt. Webtrees should not be upgrading itself,
 # users should be using tagged container versions

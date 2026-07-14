@@ -192,6 +192,7 @@ ENV = EnvVars(
 
 ROOT = "/var/www/webtrees"
 DATA_DIR = os.path.join(ROOT, "data")
+MODULES_DIR = os.path.join(ROOT, "modules_v4")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.ini.php")
 PHP_INI_FILE = "/usr/local/etc/php/php.ini"
 
@@ -372,6 +373,10 @@ def perms() -> None:
     subprocess.check_call(["groupmod", "-o", "-g", ENV.pgid, "www-data"])
     subprocess.check_call(["usermod", "-o", "-u", ENV.puid, "www-data"])
     subprocess.check_call(["chown", "-R", "www-data:www-data", DATA_DIR])
+
+    # custom modules/themes volume, see https://webtrees.net/download/modules
+    os.makedirs(MODULES_DIR, exist_ok=True)
+    subprocess.check_call(["chown", "-R", "www-data:www-data", MODULES_DIR])
 
     if os.path.isfile(CONFIG_FILE):
         subprocess.check_call(["chmod", "700", CONFIG_FILE])

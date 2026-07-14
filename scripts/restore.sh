@@ -3,10 +3,11 @@
 #
 # Usage: ./scripts/restore.sh <backup-directory> [--yes]
 #
-# WARNING: This REPLACES the current app data and database.
-# The stack is stopped, both volumes are recreated, the app data
-# is imported from the tar archive and the database is re-initialized
-# from the SQL dump. Afterwards the full stack is started again.
+# WARNING: This REPLACES the current app data, custom modules (if the
+# backup contains them) and database. The stack is stopped, the volumes
+# are recreated, the app data (and modules) are imported from the tar
+# archives and the database is re-initialized from the SQL dump.
+# Afterwards the full stack is started again.
 #
 # Note: the database credentials in your current .env must match the
 # ones used when the backup was taken (a copy is stored as env.backup
@@ -21,6 +22,7 @@ BACKUP_DIR="${1:-}"
 
 DB_DUMP="$BACKUP_DIR/db.sql.gz"
 APP_ARCHIVE="$BACKUP_DIR/app_data.tar.gz"
+MODULES_ARCHIVE="$BACKUP_DIR/app_modules.tar.gz"
 [[ -f "$DB_DUMP" ]] || die "Missing $DB_DUMP"
 [[ -f "$APP_ARCHIVE" ]] || die "Missing $APP_ARCHIVE"
 
@@ -42,6 +44,17 @@ log "Recreating app data volume ..."
     --label com.docker.compose.volume=app_data \
     "$APP_VOLUME" >/dev/null
 gunzip -c "$APP_ARCHIVE" | "$ENGINE" volume import "$APP_VOLUME" -
+
+# older backups do not contain a modules archive - keep the volume as-is then
+if [[ -f "$MODULES_ARCHIVE" ]]; then
+    log "Recreating modules volume ..."
+    "$ENGINE" volume rm -f "$MODULES_VOLUME" >/dev/null
+    "$ENGINE" volume create \
+        --label com.docker.compose.project=webtrees \
+        --label com.docker.compose.volume=app_modules \
+        "$MODULES_VOLUME" >/dev/null
+    gunzip -c "$MODULES_ARCHIVE" | "$ENGINE" volume import "$MODULES_VOLUME" -
+fi
 
 log "Recreating database volume ..."
 "$ENGINE" volume rm -f "$DB_VOLUME" >/dev/null

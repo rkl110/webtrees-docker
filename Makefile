@@ -7,7 +7,8 @@ COMPOSE = $(ENGINE) compose
 .DEFAULT_GOAL := help
 
 .PHONY: help init certs up down restart ps logs logs-db build backup restore \
-        upgrade update autostart autostart-remove shell-app shell-db check prune
+        upgrade update autostart autostart-remove shell-app shell-db check prune \
+        module modules
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | \
@@ -47,6 +48,13 @@ backup: ## create a backup in ./backups/<timestamp>/
 restore: ## restore a backup: make restore BACKUP=backups/<timestamp>
 	@test -n "$(BACKUP)" || (echo "usage: make restore BACKUP=backups/<timestamp>"; exit 1)
 	./scripts/restore.sh "$(BACKUP)"
+
+module: ## install a custom module/theme: make module SRC=<url-or-archive>
+	@test -n "$(SRC)" || (echo "usage: make module SRC=<url-or-zip/tar.gz-file>"; exit 1)
+	./scripts/install-module.sh "$(SRC)"
+
+modules: ## list installed custom modules
+	./scripts/install-module.sh --list
 
 upgrade: ## rebuild + restart; new version: make upgrade VERSION=2.2.7
 	./scripts/upgrade.sh $(VERSION)

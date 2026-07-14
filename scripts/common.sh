@@ -16,6 +16,8 @@ DB_CONTAINER="webtrees-db"
 APP_VOLUME="webtrees_app_data"
 # shellcheck disable=SC2034
 DB_VOLUME="webtrees_db_data"
+# shellcheck disable=SC2034
+MODULES_VOLUME="webtrees_app_modules"
 
 ENV_FILE="$PROJECT_DIR/.env"
 BACKUP_ROOT="${BACKUP_ROOT:-$PROJECT_DIR/backups}"

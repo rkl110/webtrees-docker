@@ -2,6 +2,7 @@
 # Create a consistent backup of webtrees:
 #   - SQL dump of the database (works across MariaDB versions)
 #   - tar export of the app data volume (media, config, GEDCOM files, ...)
+#   - tar export of the modules volume (custom modules/themes), if present
 #   - copy of the .env file (contains the matching credentials)
 #
 # Usage: ./scripts/backup.sh [target-directory]
@@ -31,6 +32,11 @@ log "Dumping database ..."
 
 log "Exporting app data volume ..."
 "$ENGINE" volume export "$APP_VOLUME" | gzip > "$BACKUP_DIR/app_data.tar.gz"
+
+if "$ENGINE" volume exists "$MODULES_VOLUME"; then
+    log "Exporting modules volume ..."
+    "$ENGINE" volume export "$MODULES_VOLUME" | gzip > "$BACKUP_DIR/app_modules.tar.gz"
+fi
 
 log "Copying .env ..."
 cp "$ENV_FILE" "$BACKUP_DIR/env.backup"
