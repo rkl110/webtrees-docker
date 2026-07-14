@@ -29,7 +29,7 @@ unit_content() {
     cat <<EOF
 [Unit]
 Description=webtrees stack (podman compose)
-Documentation=https://github.com/NathanVaughn/webtrees-docker
+Documentation=https://github.com/rkl110/webtrees-docker
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=%t/containers
@@ -65,7 +65,14 @@ if [[ "${1:-}" == "--remove" ]]; then
 fi
 
 log "Enabling lingering for user $USER ..."
-loginctl enable-linger "$USER"
+if [[ "$(loginctl show-user "$USER" --property=Linger --value 2>/dev/null || true)" == "yes" ]]; then
+    log "Lingering is already enabled."
+elif ! loginctl enable-linger "$USER" 2>/dev/null; then
+    die "Could not enable lingering (as a non-root user this needs polkit, which denied the request).
+Run this ONCE as root:
+  sudo loginctl enable-linger $USER
+then re-run: make autostart"
+fi
 
 log "Installing $UNIT_FILE ..."
 mkdir -p "$UNIT_DIR"
