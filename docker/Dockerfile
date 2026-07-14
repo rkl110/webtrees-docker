@@ -12,6 +12,7 @@ WORKDIR $WEBTREES_HOME
 # install pre-reqs
 # postgresql-client provides pg_isready
 # mariadb-client provides mysqladmin
+# vim-tiny provides vi
 RUN apt-get update \
  && apt-get install -y \
     curl \
@@ -23,6 +24,7 @@ RUN apt-get update \
     patch \
     python3 \
     unzip \
+    vim-tiny \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
