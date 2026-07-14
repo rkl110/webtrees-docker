@@ -1,5 +1,6 @@
 import filecmp
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -29,6 +30,7 @@ class EnvVars:
     prettyurls: bool
     https: bool
     httpsredirect: bool
+    httpsport: str
     sslcertfile: str
     sslcertkeyfile: str
     lang: str
@@ -44,6 +46,10 @@ class EnvVars:
     wtname: Optional[str]
     wtpass: Optional[str]
     wtemail: Optional[str]
+    # reverse proxy support, comma-separated lists
+    # https://webtrees.net/admin/proxy/
+    trustedproxies: Optional[str]
+    trustedheaders: Optional[str]
     # https://github.com/fisharebest/webtrees/blob/f9a3af650116d75f1a87f454cabff5e9047e43f3/app/Http/Middleware/UseDatabase.php#L71-L82
     dbkey: Optional[str]
     dbcert: Optional[str]
@@ -140,6 +146,8 @@ ENV = EnvVars(
     httpsredirect=truish(
         get_environment_variable("HTTPS_REDIRECT", alternates=["SSL_REDIRECT"])
     ),
+    # external HTTPS port the redirect should point to
+    httpsport=get_environment_variable("HTTPS_PORT", "443"),
     sslcertfile=get_environment_variable("SSL_CERT_FILE", "/certs/webtrees.crt"),
     sslcertkeyfile=get_environment_variable("SSL_CERT_KEY_FILE", "/certs/webtrees.key"),
     baseurl=get_environment_variable("BASE_URL"),
@@ -166,6 +174,9 @@ ENV = EnvVars(
     wtname=get_environment_variable("WT_NAME"),
     wtpass=get_environment_variable("WT_PASS"),
     wtemail=get_environment_variable("WT_EMAIL"),
+    # "or None" so empty values from compose are treated as unset
+    trustedproxies=get_environment_variable("TRUSTED_PROXIES") or None,
+    trustedheaders=get_environment_variable("TRUSTED_HEADERS") or None,
     dbkey=get_environment_variable("DB_KEY"),
     dbcert=get_environment_variable("DB_CERT"),
     dbca=get_environment_variable("DB_CA"),
@@ -203,6 +214,11 @@ def retry_urlopen(url: str, data: bytes) -> None:
             # capture error as well
             resp = e
             print2(f"Recieved HTTP {resp.status} response")
+        except urllib.error.URLError as e:
+            # connection refused/reset, e.g. Apache is still starting up
+            print2(f"Connection failed: {e.reason}")
+            time.sleep(try_ + 1)
+            continue
 
         # check status code
         # 302 is also accpetable in case the user selected something other than port 80
@@ -304,6 +320,27 @@ def enable_apache_site(
 
     with open(ssl_site_file, "w") as fp:
         fp.writelines(new_ssl_site_file_lines)
+
+    # update the HTTPS redirect with the external HTTPS port.
+    # inside the container HTTPS is always port 443, but the published
+    # host port may differ (e.g. 8443 for rootless setups)
+    redir_site_file = "/etc/apache2/sites-available/webtrees-redir.conf"
+    port_suffix = "" if ENV.httpsport == "443" else f":{ENV.httpsport}"
+
+    with open(redir_site_file, "r") as fp:
+        redir_site_file_lines = fp.readlines()
+
+    new_redir_site_file_lines = [
+        re.sub(
+            r"https://%\{SERVER_NAME\}(:\d+)?%\{REQUEST_URI\}",
+            f"https://%{{SERVER_NAME}}{port_suffix}%{{REQUEST_URI}}",
+            line,
+        )
+        for line in redir_site_file_lines
+    ]
+
+    with open(redir_site_file, "w") as fp:
+        fp.writelines(new_redir_site_file_lines)
 
     all_sites = ["webtrees", "webtrees-redir", "webtrees-ssl"]
 
@@ -510,6 +547,10 @@ def update_config_file() -> None:
     # update independent values
     set_config_value("rewrite_urls", str(int(ENV.prettyurls)))
     set_config_value("base_url", ENV.baseurl)
+
+    # reverse proxy settings, https://webtrees.net/admin/proxy/
+    set_config_value("trusted_proxies", ENV.trustedproxies)
+    set_config_value("trusted_headers", ENV.trustedheaders)
 
     # update database values as a group
     if check_db_variables():

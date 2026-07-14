@@ -13,10 +13,142 @@ run standalone.
 
 ## Usage
 
-### Quickstart
+### Quickstart (rootless Podman)
 
-If you want to jump right in, take a look at the provided
-[docker-compose.yml](https://github.com/NathanVaughn/webtrees-docker/blob/main/docker-compose.yml).
+The provided [docker-compose.yml](docker-compose.yml) is designed to run
+rootless with Podman (it works with Docker too). The webtrees image is
+built locally from this repository ([docker/Dockerfile](docker/Dockerfile)),
+the MariaDB image is pulled. All settings and secrets come from a `.env`
+file:
+
+```bash
+# 1. create your configuration
+cp .env.example .env
+# edit .env: set the passwords (DB_PASS, MARIADB_ROOT_PASSWORD, WT_PASS),
+# the admin account and BASE_URL
+
+# 2. build the webtrees image and start the stack
+podman compose up -d --build
+```
+
+webtrees is then available at <http://localhost:8080> (and, if HTTPS is
+enabled, at <https://localhost:8443>). Both ports are unprivileged so no
+root permissions are required. All application data (media, GEDCOM files,
+config) and the database live in the named volumes `webtrees_app_data`
+and `webtrees_db_data`.
+
+Requirements: Podman 4.7+ with `podman compose` (or `podman-compose`).
+
+#### Start on boot (Debian/Linux server, rootless)
+
+Rootless Podman has no daemon, so a restart policy alone does not survive
+a reboot (`restart: always` only covers container crashes while the system
+is running). For a rootless user on a systemd-based server (e.g. Debian),
+install the provided systemd user unit once:
+
+```bash
+./scripts/install-autostart.sh
+```
+
+This enables lingering for your user (services run without an active
+login), installs `~/.config/systemd/user/webtrees.service` — which runs
+`podman compose up -d` on boot — and enables it. The stack can then also
+be managed with `systemctl --user start|stop|status webtrees`.
+Use `--print` to inspect the generated unit and `--remove` to uninstall.
+
+Alternative: Podman's native [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
+units are the canonical systemd integration, but they replace compose as
+the orchestrator entirely. Since this project is compose-based, the
+wrapper unit keeps `docker-compose.yml` the single source of truth.
+
+#### HTTPS with self-signed certificates
+
+```bash
+make certs                      # hostname taken from BASE_URL in .env
+# or: make certs HOST=server.example.com
+```
+
+This writes `certs/webtrees.crt` and `certs/webtrees.key` (gitignored),
+which are mounted read-only into the container. Then set in `.env`:
+
+```bash
+HTTPS=1
+HTTPS_REDIRECT=1                # optional: force HTTPS
+BASE_URL=https://<host>:8443
+```
+
+and recreate the stack (`podman compose down && podman compose up -d` —
+a plain `restart` does not pick up `.env` changes). webtrees is then
+served on port 8443. Browsers will warn about the self-signed
+certificate; import `certs/webtrees.crt` as trusted or use a reverse
+proxy with a real certificate for public installations. Bring-your-own
+certificates work too — just place them at the same paths.
+
+#### Behind a reverse proxy
+
+For public installations, terminate TLS at a reverse proxy with a real
+certificate and keep webtrees on plain HTTP behind it
+(see also <https://webtrees.net/admin/proxy/>). In `.env`:
+
+```bash
+BASE_URL=https://family.example.com   # the public URL
+HTTPS=0                               # TLS terminates at the proxy
+BIND_ADDRESS=127.0.0.1                # app only reachable via the proxy
+TRUSTED_PROXIES=10.0.2.0/24           # proxy address as seen by the container
+```
+
+`TRUSTED_PROXIES` (comma-separated IPs/CIDR ranges) tells webtrees which
+`X-Forwarded-For` headers to trust, so rate limiting and logs see real
+client IPs. With rootless Podman, connections arrive from an internal
+gateway address — check the client IP shown in
+*Control panel → Server information* and trust that. Only trust proxies
+when direct access to the app port is blocked (`BIND_ADDRESS=127.0.0.1`),
+otherwise clients could spoof their IP. If your proxy sends the client IP
+in a custom header, set `TRUSTED_HEADERS` (e.g. `cf-connecting-ip` for
+Cloudflare).
+
+Example [Caddy](https://caddyserver.com/) config on the same host —
+Caddy gets Let's Encrypt certificates automatically:
+
+```text
+family.example.com {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+After changing `.env`, recreate the stack:
+`podman compose down && podman compose up -d`.
+
+#### Updates and upgrades
+
+The webtrees version is pinned via `WEBTREES_VERSION` in `.env`:
+
+```bash
+./scripts/upgrade.sh          # rebuild the current version (fresh base image) and restart
+./scripts/upgrade.sh 2.2.7    # switch to a different webtrees version
+```
+
+The script creates a backup first (skip with `--no-backup`), updates
+`.env`, pulls the MariaDB image, rebuilds the webtrees image and
+recreates the containers. webtrees migrates its database schema
+automatically when a newer version starts. When changing the version,
+check [dev/versions.json](dev/versions.json) for the matching
+`PHP_VERSION` and `UPGRADE_PATCH_VERSION` build arguments in `.env`.
+
+#### Backup and restore
+
+```bash
+./scripts/backup.sh                            # backup to ./backups/<timestamp>/
+./scripts/restore.sh backups/20260714-120000   # restore a backup
+```
+
+A backup contains a consistent SQL dump of the database (`db.sql.gz`),
+a tar export of the app data volume (`app_data.tar.gz`) and a copy of the
+`.env` file (`env.backup`). Backups are taken while the stack is running;
+a restore stops the stack, recreates both volumes and starts it again.
+Since the database is restored from a SQL dump, backups also survive
+MariaDB major version changes. Store the `backups/` directory somewhere
+safe (it is gitignored and contains your credentials).
 
 ### Environment Variables
 

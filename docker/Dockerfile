@@ -27,10 +27,13 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # install php extensions
+# opcache is only built where the base image does not already provide it
+# (statically built since PHP 8.5, cannot be built as a shared module there)
 RUN pecl install imagick \
  && docker-php-ext-enable imagick \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
- && docker-php-ext-install -j"$(nproc)" pdo pdo_mysql pdo_pgsql zip intl gd exif opcache
+ && docker-php-ext-install -j"$(nproc)" pdo pdo_mysql pdo_pgsql zip intl gd exif \
+ && if ! php -m | grep -qi opcache; then docker-php-ext-install opcache; fi
 
 # remove old apt stuff
 RUN apt-get purge gcc g++ make -y \
