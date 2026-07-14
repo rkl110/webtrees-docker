@@ -4,12 +4,19 @@
 [![](https://img.shields.io/docker/v/nathanvaughn/webtrees)](https://hub.docker.com/r/nathanvaughn/webtrees)
 [![](https://img.shields.io/docker/image-size/nathanvaughn/webtrees)](https://hub.docker.com/r/nathanvaughn/webtrees)
 [![](https://img.shields.io/docker/pulls/nathanvaughn/webtrees)](https://hub.docker.com/r/nathanvaughn/webtrees)
-[![](https://img.shields.io/github/license/nathanvaughn/webtrees-docker)](https://github.com/NathanVaughn/webtrees-docker)
+[![](https://img.shields.io/github/license/rkl110/webtrees-docker)](https://github.com/rkl110/webtrees-docker)
 
 This is a multi-architecture, up-to-date, Docker image for
 [webtrees](https://github.com/fisharebest/webtrees) served over HTTP or HTTPS.
 This can be put behind a reverse proxy such as CloudFlare or Traefik, or
 run standalone.
+
+This repository ([rkl110/webtrees-docker](https://github.com/rkl110/webtrees-docker))
+is a fork of
+[NathanVaughn/webtrees-docker](https://github.com/NathanVaughn/webtrees-docker),
+adapted for a rootless Podman deployment (see the Quickstart below). The
+prebuilt Docker images referenced in this README are published by the
+original project.
 
 ## Usage
 
@@ -331,10 +338,12 @@ image: ghcr.io/nathanvaughn/webtrees:latest
 ## Issues
 
 New releases of the Dockerfile are automatically generated from upstream
-webtrees versions. This means a human does not vette every release. While
-I try to stay on top of things, sometimes breaking issues do occur. If you
-have any, please feel free to fill out an
-[issue](https://github.com/NathanVaughn/webtrees-docker/issues).
+webtrees versions. This means a human does not vette every release, so
+sometimes breaking issues do occur. For problems with this fork (Podman
+setup, compose file, scripts), please open an
+[issue in this repository](https://github.com/rkl110/webtrees-docker/issues).
+For general problems with the image itself, check the
+[upstream issues](https://github.com/NathanVaughn/webtrees-docker/issues).
 
 ## Reverse Proxy Issues
 
