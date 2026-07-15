@@ -62,7 +62,14 @@ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -sha256 \
     -keyout "$KEY_FILE" -out "$CERT_FILE" \
     -subj "/CN=$HOST" \
     -addext "subjectAltName=$san" 2>/dev/null
-chmod 600 "$KEY_FILE"
+# The key must be readable by www-data (uid 33) INSIDE the container.
+# With rootless podman the host user maps to container root, and www-data
+# maps to a subuid - so a 600 key owned by the host user is NOT readable
+# by Apache and mod_ssl fails with "Permission denied". 644 is acceptable
+# here: it is a self-signed certificate for LAN use. If other users on
+# the host must not read it, use instead:
+#   chmod 600 certs/webtrees.key && podman unshare chown 33:33 certs/webtrees.key
+chmod 644 "$KEY_FILE"
 chmod 644 "$CERT_FILE"
 
 log "Created:"
