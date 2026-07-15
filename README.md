@@ -44,6 +44,14 @@ root permissions are required. All application data (media, GEDCOM files,
 config), custom modules/themes and the database live in the named volumes
 `webtrees_app_data`, `webtrees_app_modules` and `webtrees_db_data`.
 
+Both containers run entirely **without root**: the webtrees image sets
+`USER www-data` (Apache listens on the unprivileged ports 8080/8443
+inside the container), the database runs as the `mysql` user, all
+capabilities are dropped and `no-new-privileges` is set. In the webtrees
+image the root account is additionally locked and all setuid/setgid
+binaries are removed, so no process can escalate to root inside the
+container.
+
 Requirements: Podman 4.7+ with `podman compose` (or `podman-compose`).
 
 #### Start on boot (Debian/Linux server, rootless)
@@ -90,6 +98,14 @@ served on port 8443. Browsers will warn about the self-signed
 certificate; import `certs/webtrees.crt` as trusted or use a reverse
 proxy with a real certificate for public installations. Bring-your-own
 certificates work too — just place them at the same paths.
+
+Note for your own certificates: Apache runs as `www-data` (uid 33), which
+with rootless Podman maps to a subuid of your host user — a key file with
+`600` permissions owned by your host user is therefore **not readable**
+inside the container (`mod_ssl: Permission denied`). Make the key readable
+(`chmod 644 certs/webtrees.key`; `make certs` does this automatically), or
+keep it private with
+`podman unshare chown 33:33 certs/webtrees.key`.
 
 #### Behind a reverse proxy
 
@@ -196,8 +212,12 @@ the default value will be used.
 | `PHP_MAX_EXECUTION_TIME`                                                   | No       | `90`                  | PHP max execution time for a request in seconds. See the [PHP documentation](https://www.php.net/manual/en/info.configuration.php#ini.max-execution-time)                                                         |
 | `PHP_POST_MAX_SIZE`                                                        | No       | `50M`                 | PHP POST request max size. See the [PHP documentation](https://www.php.net/manual/en/ini.core.php#ini.post-max-size)                                                                                              |
 | `PHP_UPLOAD_MAX_FILE_SIZE`                                                 | No       | `50M`                 | PHP max uploaded file size. See the [PHP documentation](https://www.php.net/manual/en/ini.core.php#ini.upload-max-filesize)                                                                                       |
-| `PUID`                                                                     | No       | `33`                  | See [https://docs.linuxserver.io/general/understanding-puid-and-pgid/](https://docs.linuxserver.io/general/understanding-puid-and-pgid/)                                                                                         |
-| `PGID`                                                                     | No       | `33`                  | See [https://docs.linuxserver.io/general/understanding-puid-and-pgid/](https://docs.linuxserver.io/general/understanding-puid-and-pgid/)
+
+Note: the upstream `PUID`/`PGID` variables are not supported by this fork.
+The container always runs as `www-data` (33) and never as root, so it cannot
+change UIDs at runtime. With rootless Podman, use `podman run --userns` /
+`--uidmap` options (or the compose `userns_mode` key) if you need a
+different host-side mapping.
 
 Additionally, you can add `_FILE` to the end of any environment variable name,
 and instead that will read the value in from the given filename.
@@ -285,24 +305,27 @@ rm <filename.tar.gz>                  # remove the tar archive
 unzip <filename.zip>                  # extract the zip file
 rm <filename.zip>                     # remove the zip file
 
-chown -R www-data:www-data .          # make sure webtrees can read it
 exit                                  # disconnect from the container
 ```
 
+(No `chown` needed: the container runs as `www-data`, so all extracted
+files already belong to the right user.)
+
 ### Network
 
-The image exposes port 80 and 443.
+The image exposes the unprivileged ports 8080 (HTTP) and 8443 (HTTPS) -
+Apache runs as `www-data` and therefore cannot bind ports below 1024.
 
 Example `docker-compose`:
 
 ```yml
 ports:
-  - 80:80
-  - 443:443
+  - 8080:8080
+  - 8443:8443
 ```
 
-If you have the HTTPS redirect enabled, you still need to expose port 80.
-If you're not using HTTPS at all, you don't need to expose port 443.
+If you have the HTTPS redirect enabled, you still need to expose port 8080.
+If you're not using HTTPS at all, you don't need to expose port 8443.
 
 ### ImageMagick
 

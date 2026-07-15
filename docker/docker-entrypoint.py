@@ -60,9 +60,6 @@ class EnvVars:
     phpmaxexecutiontime: str
     phppostmaxsize: str
     phpuploadmaxfilesize: str
-    # user/group ID
-    puid: str
-    pgid: str
 
 
 def truish(value: Optional[str]) -> bool:
@@ -185,8 +182,6 @@ ENV = EnvVars(
     phpmaxexecutiontime=get_environment_variable("PHP_MAX_EXECUTION_TIME", "90"),
     phppostmaxsize=get_environment_variable("PHP_POST_MAX_SIZE", "50M"),
     phpuploadmaxfilesize=get_environment_variable("PHP_UPLOAD_MAX_FILE_SIZE", "50M"),
-    puid=get_environment_variable("PUID", "33"),  # www-data user
-    pgid=get_environment_variable("PGID", "33"),
 )
 
 
@@ -323,7 +318,7 @@ def enable_apache_site(
         fp.writelines(new_ssl_site_file_lines)
 
     # update the HTTPS redirect with the external HTTPS port.
-    # inside the container HTTPS is always port 443, but the published
+    # inside the container HTTPS is always port 8443, but the published
     # host port may differ (e.g. 8443 for rootless setups)
     redir_site_file = "/etc/apache2/sites-available/webtrees-redir.conf"
     port_suffix = "" if ENV.httpsport == "443" else f":{ENV.httpsport}"
@@ -365,21 +360,17 @@ def enable_apache_site(
 
 def perms() -> None:
     """
-    Set up folder permissions
+    Set up folder permissions. The whole container runs as www-data
+    (ownership is fixed at build time), so this only makes sure the
+    expected directories exist and the config file stays private.
     """
 
-    print2("Setting up folder permissions for uploads")
-    # https://github.com/linuxserver/docker-baseimage-alpine/blob/bef0f4cee208396c92c0fdd1426613de02698301/root/etc/s6-overlay/s6-rc.d/init-adduser/run#L4-L9
-    subprocess.check_call(["groupmod", "-o", "-g", ENV.pgid, "www-data"])
-    subprocess.check_call(["usermod", "-o", "-u", ENV.puid, "www-data"])
-    subprocess.check_call(["chown", "-R", "www-data:www-data", DATA_DIR])
-
+    print2("Checking folder permissions for uploads")
     # custom modules/themes volume, see https://webtrees.net/download/modules
     os.makedirs(MODULES_DIR, exist_ok=True)
-    subprocess.check_call(["chown", "-R", "www-data:www-data", MODULES_DIR])
 
     if os.path.isfile(CONFIG_FILE):
-        subprocess.check_call(["chmod", "700", CONFIG_FILE])
+        os.chmod(CONFIG_FILE, 0o700)
 
 
 def php_ini() -> None:
@@ -467,7 +458,7 @@ def setup_wizard() -> None:
     # set us up to a known HTTP state
     enable_apache_site(["webtrees"])
     # run apache in the background
-    apache_proc = subprocess.Popen(["apache2-foreground"], stderr=subprocess.DEVNULL)
+    apache_proc = subprocess.Popen(["apache2-foreground"])
 
     if ENV.dbtype in [DBType.mysql, DBType.pgsql]:
         # for typing, check_db_variables already does this
@@ -509,8 +500,8 @@ def setup_wizard() -> None:
         # let Apache start up
         time.sleep(2)
 
-    # send it
-    url = "http://127.0.0.1:80/"
+    # send it (Apache listens on the unprivileged port 8080 inside the container)
+    url = "http://127.0.0.1:8080/"
     print2(f"Sending setup wizard request to {url}")
 
     retry_urlopen(
@@ -587,14 +578,37 @@ def https() -> None:
     if not ENV.https:
         print2("Removing HTTPS")
         enable_apache_site(["webtrees"])
+        return
+
     # https with redirect
-    elif ENV.httpsredirect:
+    if ENV.httpsredirect:
         print2("Adding HTTPS, with HTTPS redirect")
         enable_apache_site(["webtrees-ssl", "webtrees-redir"])
     # https no redirect
     else:
         print2("Adding HTTPS, removing HTTPS redirect")
         enable_apache_site(["webtrees", "webtrees-ssl"])
+
+    # fail fast with a clear message instead of letting Apache die on a
+    # missing or unreadable certificate (enable_apache_site made the paths
+    # absolute)
+    for f in (ENV.sslcertfile, ENV.sslcertkeyfile):
+        if not os.path.isfile(f):
+            print2(f"ERROR: HTTPS is enabled but {f} does not exist.")
+            print2(
+                "ERROR: Mount certificates to /certs/ (generate self-signed"
+                " ones with 'make certs') or set HTTPS=0."
+            )
+            sys.exit(1)
+
+        if not os.access(f, os.R_OK):
+            print2(f"ERROR: HTTPS is enabled but {f} is not readable.")
+            print2(
+                "ERROR: The container runs as www-data (uid 33), which maps"
+                " to a subuid on the host - a 600 key owned by the host user"
+                " is not readable here. Fix with: chmod 644 <file>"
+            )
+            sys.exit(1)
 
 
 def htaccess() -> None:
@@ -641,7 +655,9 @@ def main() -> None:
     perms()
 
     print2("Starting Apache")
-    subprocess.run(["apache2-foreground"], stderr=subprocess.DEVNULL)
+    # do NOT swallow stderr here: the image symlinks Apache's error.log to
+    # stderr, so suppressing it hides every Apache startup/runtime error
+    subprocess.run(["apache2-foreground"])
 
 
 if __name__ == "__main__":

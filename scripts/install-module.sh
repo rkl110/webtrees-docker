@@ -81,8 +81,10 @@ case "${1:-}" in
 
         log "Extracting into $MODULES_DIR ..."
         # shellcheck disable=SC2016  # variables expand inside the container
+        # the container runs as www-data, so extracted files already have
+        # the right owner
         "$ENGINE" exec "$APP_CONTAINER" sh -c \
-            "$EXTRACT"' && rm -f "$1" && chown -R www-data:www-data "$2"' \
+            "$EXTRACT"' && rm -f "$1"' \
             _ "$TMP_ARCHIVE" "$MODULES_DIR"
 
         log "Done. Installed modules:"

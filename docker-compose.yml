@@ -48,17 +48,21 @@ services:
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-90}
       PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-50M}
       PHP_UPLOAD_MAX_FILE_SIZE: ${PHP_UPLOAD_MAX_FILE_SIZE:-50M}
-      PUID: ${PUID:-33}
-      PGID: ${PGID:-33}
     ports:
-      # BIND_ADDRESS=127.0.0.1 restricts access to a local reverse proxy
-      - "${BIND_ADDRESS:-0.0.0.0}:${HTTP_PORT:-8080}:80"
-      - "${BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-8443}:443"
+      # BIND_ADDRESS=127.0.0.1 restricts access to a local reverse proxy.
+      # The container runs entirely as www-data, so Apache listens on the
+      # unprivileged ports 8080/8443 inside the container as well.
+      - "${BIND_ADDRESS:-0.0.0.0}:${HTTP_PORT:-8080}:8080"
+      - "${BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-8443}:8443"
     # covers container crashes; start-on-boot is handled by the systemd
     # user unit, see scripts/install-autostart.sh
     restart: always
     security_opt:
       - no-new-privileges:true
+    # nothing in the image runs as root (USER www-data), so no capabilities
+    # are needed at all
+    cap_drop:
+      - ALL
     volumes:
       - app_data:/var/www/webtrees/data/
       # TLS certificates, used when HTTPS=1
@@ -71,6 +75,9 @@ services:
   db:
     image: ${MARIADB_IMAGE:-docker.io/library/mariadb}:${MARIADB_VERSION:-12}
     container_name: webtrees-db
+    # run as the image's mysql user (999) from the start, so no process in
+    # this container ever runs as root
+    user: "999:999"
     environment:
       MARIADB_DATABASE: ${DB_NAME:-webtrees}
       MARIADB_USER: ${DB_USER:-webtrees}
@@ -87,6 +94,8 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - db_data:/var/lib/mysql
 
